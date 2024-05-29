@@ -1,49 +1,47 @@
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.Collections;
 
 public class Solver {
   private ArrayList<String> prompts;
-  private char[] answers;
-  private int count = 0;
 
   public Solver() {
-    this.prompts = new ArrayList<>();
+    this.prompts = new ArrayList<String>();
   }
 
   public void addPiece(String prompt) {
     this.prompts.add(prompt);
   }
 
-  public synchronized void setPieceAnswer(int index, char answer) {
-    answers[index] = answer;
-    count++;
-    if (count == prompts.size()) {
-      notify();
-    }
-  }
+  public String scrapeAnswer() {
+    ArrayList<Scraper> scrapers = new ArrayList<>();
 
-  public synchronized String scrapeAnswer() {
-    int size = prompts.size();
-    answers = new char[size];
-
-    ArrayList<Scraper> scrapers = new ArrayList<>(size);
-
-    for (int i = 0; i < size; i++) {
-      Gpt gpt = new Gpt(prompts.get(i));
-      Scraper scraper = new Scraper(gpt, this, i);
+    // Membuat instance Scraper untuk setiap prompt
+    for (String prompt : prompts) {
+      Scraper scraper = new Scraper(prompt);
       scrapers.add(scraper);
       scraper.start();
     }
 
-    while (count < size) {
+    StringBuilder answer = new StringBuilder();
+    ArrayList<Character> pieces = new ArrayList<>();
+
+    // Mengumpulkan jawaban dari setiap scraper
+    for (Scraper scraper : scrapers) {
       try {
-        wait();
+        pieces.add(scraper.getAnswer());
       } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
+        e.printStackTrace();
       }
     }
 
-    return new String(answers);
+    // Mengurutkan jawaban sesuai abjad
+    Collections.sort(pieces);
+
+    // Menggabungkan jawaban menjadi satu string
+    for (char piece : pieces) {
+      answer.append(piece);
+    }
+
+    return answer.toString();
   }
 }
